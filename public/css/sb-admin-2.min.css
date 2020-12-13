@@ -4510,10 +4510,14 @@
   
   .card-body {
     flex: 1 1 auto;
-    min-height: 1px;
+    min-height: 2px;
     padding: 1.25rem;
   }
-  
+  .card2-body {
+    flex: 1 1 auto;
+    min-height: 2px;
+    padding: 1.25rem;
+  }
   .card-title {
     margin-bottom: 0.75rem;
   }

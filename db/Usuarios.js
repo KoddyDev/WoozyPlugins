@@ -9,6 +9,9 @@ module.exports = class Usuarios extends Model {
             },
             nome: {type: DataTypes.STRING
             },
+            rank: {
+                type: DataTypes.STRING
+            },
             email: { 
                 type: DataTypes.STRING
             },

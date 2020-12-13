@@ -21,7 +21,7 @@ const path = require('path')
 const Licencas = require('./db/Licenças')
 const Users = require('./db/Usuarios');
 const Plugins = require('./db/Plugins');
-
+let Noticias = require('./db/Noticias')
 
 const app = express()
 app.set('view-engine', 'ejs')
@@ -54,14 +54,30 @@ app.get('/login', Autenticado , (req, res) => {
 app.get('/index', naoAutenticado , async (req, res) => {
 
 
+    let findL = await Noticias.findAll()
+
+    console.log(findL)
 
 
-    let findL = await Users.findAll()
+    let mapa = findL.map(f => {
+
+        let dados = f._previousDataValues
+        //console.log(dados)
+        let json = {
+            id: dados.id,
+            email: dados.email,
+            plugin: dados.plugin, 
+            licenca: dados.licenca,
+            ip: dados.ip
+        }
+        return json
+
+    })
 
 
     //console.log(mapa)
     
-    res.render('index.ejs', {nome: req.session.name})
+    res.render('index.ejs', {nome: req.session.name, dados: findL})
 })
 
 app.get('/contratar', naoAutenticado , async (req, res) => {
@@ -111,6 +127,8 @@ app.post('/contratar', naoAutenticado , async (req, res) => {
 const payment_method_id = req.body.payment_method_id;
 const installments = req.body.installments;
 const issuer_id = req.body.issuer_id;
+const payment = req.params.payment
+console.log(payment)
 
 var mercadopago = require('mercadopago');
 mercadopago.configurations.setAccessToken("TEST-cacfd5d9-21b1-4339-84d2-1c86159000c6");
@@ -121,31 +139,15 @@ var payment_data = {
   description: 'Teste',
   installments: installments,
   payment_method_id: payment_method_id,
-  issuer_id: issuer_id,
-  payer: {
-    email: 'heloise_paucek@bol.com.br'
-  }
+  issuer_id: issuer_id
 };
 
 // Armazena e envia o pagamento
 mercadopago.payment.save(payment_data).then(async function (data) {
   // ...    
   // Imprime o status do pagamento
-  if(data.status = 'approved') {
-    let findE = await Users.findOne({where:{
-        email: req.session.email
-    }})
+  console.log(data)
 
-    await findE.increment({ gasto: req.body.preco, plugins: 1})
-
-    await Licencas.create({
-        email: req.session.email,
-        plugin: mapa.nome,
-        licenca: gerador,
-        ip: '0.0.0.0'
-    })
-      res.redirect('/licences')
-  }
 }).catch(function (error) {
   console.error("Ocorreu um erro: " + error)
 });
@@ -156,9 +158,55 @@ app.get('/clientarea', naoAutenticado , async (req, res) => {
     let findE = await Users.findOne({where:{
         email: req.session.email
     }})
+    if(findE.gasto >= 50) {
+        await Users.update({
 
-    res.render('clientarea.ejs', {nome: req.session.name, plugins: findE.plugins, gastos: findE.gasto})
+            rank: 'Iniciante'
+        }, { where:{
+            email: req.session.email
+        }})
+    }
+    if(findE.gasto >= 100) {
+        await Users.update({
+
+            rank: 'Bronze'
+        }, { where:{
+            email: req.session.email
+        }})
+    }
+    if(findE.gasto >= 150) {
+        await Users.update({
+
+            rank: 'Ferro'}, { where:{
+                email: req.session.email
+            }})
+    }
+    if(findE.gasto >= 200) {
+        await Users.update({
+
+            rank: 'Ouro'}, { where:{
+                email: req.session.email
+            }})
+    }
+    if(findE.gasto >= 250) {
+        await Users.update({
+
+            rank: 'Esmeralda'}, { where:{
+                email: req.session.email
+            }})
+    }
+    if(findE.gasto >= 300) {
+        await Users.update({
+
+                        rank: 'Diamante'}, { where:{
+                            email: req.session.email
+                        }
+                        })
+    }
+   res.render('clientarea.ejs', {nome: req.session.name, plugins: findE.plugins, gastos: findE.gasto, rank: findE.rank})
+    
 })
+
 app.get('/perfil', naoAutenticado , async (req, res) => {
     
     res.render('perfil.ejs', {nome: req.session.name, erro: null})
@@ -191,7 +239,7 @@ app.get('/users', naoAutenticado , async (req, res) => {
 }
 })
 app.get('/licences', naoAutenticado , async (req, res) => {
-    let findL = await Users.findAll({
+    let findL = await Licencas.findAll({
         where: {
 email: req.session.email
         },
@@ -267,9 +315,11 @@ app.get('/logout', naoAutenticado, async (req, res) => {
 app.get('/editar/:id', naoAutenticado , async (req, res) => {
     
     let id = req.params.id
+
     let findI = await Licencas.findOne({where:{
         id: id
     }})
+    
     
 
     if(findI) {
@@ -277,6 +327,24 @@ app.get('/editar/:id', naoAutenticado , async (req, res) => {
         res.render('editar.ejs', {nome: req.session.name, plugin: findI.plugin ,erro: null, id: id})
     } else {
         res.render('editar.ejs', {nome: req.session.name, plugin: 'ERRO' ,erro: 'Não encontrei essa licença.', id: id})
+    }
+    
+})
+app.get('/notice/:id', naoAutenticado , async (req, res) => {
+    
+    let id = req.params.id
+
+    let findI = await Noticias.findOne({where:{
+        id: id
+    }})
+    
+    
+
+    if(findI) {
+        res.render('noticeview.ejs', {nome: req.session.name, erro: null, id: id, title: findI.title, description: findI.description, author: findI.author})
+    
+        } else {
+        res.render('noticeview.ejs', {nome: req.session.name, erro: 'Esta noticia não existe.', id: id})
     }
     
 })
@@ -363,6 +431,13 @@ app.get('/admin', naoAutenticado, async (req, res) => {
         res.redirect('/index')
     }
 })
+app.get('/createn', naoAutenticado, async (req, res) => {
+    if(req.session.admin) {
+        res.render('createn.ejs', {erro: null})
+
+    } else {
+        res.redirect('/index')
+    }})
 app.get('/admin/:id', naoAutenticado, async (req, res) => {
     if(req.session.admin) {
         let id = req.params.id
@@ -456,6 +531,35 @@ app.post('/createp', async (req,res) =>{
         res.redirect('/')
     }
 })
+app.post('/createn', async (req,res) =>{
+    if(req.session.admin) {
+    let title = req.body.title,
+        description = req.body.description
+    
+
+                if(!title || !description) {
+            res.render('createn.ejs', {nome: req.session.name, erro: 'Preencha todos os campos.'})
+        } else {
+
+            let findE = await Noticias.findOne({where:{
+                title: title
+            }})
+
+            if(findE) res.render('createn.ejs', {nome: req.session.name, erro: 'Essa noticia já foi postada.'})
+
+            await Noticias.create({
+                title: title,
+                description: description,
+                author: req.session.name
+                
+            })
+
+            res.render('createn.ejs', {nome: req.session.name, erro: 'Criado com sucesso.'})
+        }
+    } else {
+        res.redirect('/')
+    }
+})
 app.post('/perfil', async (req, res) => {
     let email = req.body.email,
     senha = req.body.senha,
@@ -503,6 +607,7 @@ app.post('/register', async (req,res) =>{
             await Users.create({
                 id: id,
                 nome: nome,
+                rank: "Nenhum",
                 email: email,
                 senha: senha,
                 plugins: 0,
@@ -604,6 +709,7 @@ app.post('/add', async (req,res) =>{
 app.post('/editar/:id', async (req,res) =>{
     let id = req.params.id
     let ip = req.body.ip
+    let licence = req.body.licence
 
     if(!ip) res.render('editar.ejs', {nome: req.session.name, plugin: findI.plugin ,erro: 'Preencha os campos todos.', id: id})
 
@@ -611,7 +717,7 @@ app.post('/editar/:id', async (req,res) =>{
         id: id
     }})
     if(findI) {
-        await Licencas.update({ip: ip}, {where: {id: id}})
+        await Licencas.update({ip: ip, licenca: licence}, {where: {id: id}})
         res.redirect('/')
     } else {
         res.render('editar.ejs', {nome: req.session.name, plugin: findI.plugin ,erro: 'Licença não encontrada', id: id})
